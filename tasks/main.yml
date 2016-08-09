@@ -1,0 +1,7 @@
+---
+# file: tasks/main.yml
+
+- include: package.yml
+  tags:
+    - docker
+    - package

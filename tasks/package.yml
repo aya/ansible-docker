@@ -1,0 +1,12 @@
+---
+# file: tasks/package.yml
+
+  - include: pre_package_alpine.yml
+    when: ansible_os_family == 'Alpine'
+    tags: alpine
+
+  - name: package - add package docker
+    package: name=docker state=present
+
+  - name: package - launch docker daemon
+    service: name=docker state=started enabled=yes runlevel=boot

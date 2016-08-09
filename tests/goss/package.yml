@@ -1,0 +1,10 @@
+package:
+  docker:
+    installed: true
+service:
+  docker:
+    enabled: true
+    running: true
+group:
+  docker:
+    exists: true

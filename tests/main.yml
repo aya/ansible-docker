@@ -1,0 +1,7 @@
+---
+# file: tests/main.yml
+
+- include: goss.yml
+  tags:
+    - hosts
+    - tests

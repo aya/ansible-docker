@@ -1,0 +1,6 @@
+---
+# file: tests/playbook.yml
+
+- hosts: all
+  tasks:
+    - include: main.yml
