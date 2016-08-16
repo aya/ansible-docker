@@ -1,12 +1,20 @@
 ---
 # file: tasks/package.yml
 
-  - include: pre_package_alpine.yml
-    when: ansible_os_family == 'Alpine'
-    tags: alpine
+- name: package - remove unwanted packages
+  package: name="{{item}}" state=absent
+  with_items: "{{docker_package_purge}}"
+  when: docker_package_purge|length > 0
+  become: yes
 
-  - name: package - add package docker
-    package: name=docker state=present
+- name: package - add package dependencies
+  package: name="{{item}}" state=present
+  with_items: "{{docker_package_dependencies}}"
+  when: docker_package_dependencies|length > 0
+  become: yes
 
-  - name: package - launch docker daemon
-    service: name=docker state=started enabled=yes runlevel=boot
+- name: package - add docker package
+  package: name="{{item}}" state=present
+  with_items: "{{docker_package}}"
+  when: docker_package|length > 0
+  become: yes

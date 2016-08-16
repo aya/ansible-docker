@@ -1,0 +1,10 @@
+---
+# file: vars/debian.yml
+
+docker_check_kernel: '3.2'
+
+docker_package: docker-engine
+docker_package_dependencies:
+  - apt-transport-https
+  - curl
+  - software-properties-common

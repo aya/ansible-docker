@@ -1,0 +1,10 @@
+---
+# file vars/centos-7.yml
+
+docker_check_kernel: '3.10.0-327'
+
+docker_package: docker-latest
+docker_package_dependencies:
+  - curl
+  - device-mapper-libs
+docker_service: docker-latest

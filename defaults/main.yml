@@ -1,3 +1,29 @@
 ---
 # file: defaults/main.yml
 
+docker_check_kernel: '3.10'
+docker_check_machine: 'x86_64'
+
+docker_package_dependencies: []
+docker_package_purge: []
+docker_package:
+  - docker
+
+docker_service_action: service
+docker_service_args:
+    name: "{{item}}"
+    state: started
+    enabled: yes
+docker_service:
+  - docker
+
+docker_repository_action:
+  action: ''
+  pkg_key: ''
+  args: {}
+  repo_keys: []
+
+docker_repositoryinfo:
+  pkg_repo: ''
+  args: {}
+  repos: []

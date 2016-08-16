@@ -1,7 +1,18 @@
 ---
 # file: tasks/main.yml
 
+- include: vars.yml
+  tags:
+    - vars
+
+- include: check.yml
+  tags:
+    - check
+
 - include: package.yml
   tags:
-    - docker
     - package
+
+- include: service.yml
+  tags:
+    - service
