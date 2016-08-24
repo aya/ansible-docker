@@ -1,4 +1,4 @@
 gossfile:
-  package.yml: {}
+  package_debian.yml: {}
   service.yml: {}
   group.yml: {}

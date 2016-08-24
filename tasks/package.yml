@@ -3,8 +3,8 @@
 
 - name: package - remove unwanted packages
   package: name="{{item}}" state=absent
-  with_items: "{{docker_package_purge}}"
-  when: docker_package_purge|length > 0
+  with_items: "{{docker_package_unwanted}}"
+  when: docker_package_unwanted|length > 0
   become: yes
 
 - name: package - add package dependencies

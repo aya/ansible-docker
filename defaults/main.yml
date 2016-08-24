@@ -5,7 +5,7 @@ docker_check_kernel: '3.10'
 docker_check_machine: 'x86_64'
 
 docker_package_dependencies: []
-docker_package_purge: []
+docker_package_unwanted: []
 docker_package:
   - docker
 

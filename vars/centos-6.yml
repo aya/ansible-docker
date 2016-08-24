@@ -4,7 +4,7 @@
 docker_check_kernel: '2.6.32-431'
 
 docker_package: docker-io
-docker_package_purge: docker
+docker_package_unwanted: docker
 docker_package_dependencies:
   - epel-release
   - curl

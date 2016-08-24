@@ -3,5 +3,4 @@
 
 - include: goss.yml
   tags:
-    - hosts
     - tests

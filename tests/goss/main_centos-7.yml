@@ -1,4 +1,4 @@
 gossfile:
-  package.yml: {}
+  package_centos-7.yml: {}
   service.yml: {}
   group.yml: {}
