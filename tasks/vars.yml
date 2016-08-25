@@ -24,4 +24,4 @@
       - vars/
 
 - name: override variables
-  include_vars: "vars/main.yml"
+  include_vars: "main.yml"
