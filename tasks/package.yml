@@ -17,4 +17,9 @@
   package: name="{{item}}" state=present
   with_items: "{{docker_package}}"
   when: docker_package|length > 0
+
+- name: package - add docker storage setup
+  lineinfile: dest="/etc/sysconfig/{{item}}-storage-setup" state="present" line="STORAGE_DRIVER=\"\""
+  with_items: "{{docker_package}}"
+  when: docker_package|length > 0
   become: yes

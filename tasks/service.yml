@@ -6,3 +6,4 @@
   args: "{{docker_service_args}}"
   with_items: "{{docker_service}}"
   when: "{{docker_service|length > 0}}"
+  become: yes

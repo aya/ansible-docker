@@ -7,4 +7,6 @@ docker_package: docker-latest
 docker_package_dependencies:
   - curl
   - device-mapper-libs
-docker_service: docker-latest
+docker_service:
+  - docker-latest-storage-setup
+  - docker-latest
