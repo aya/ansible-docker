@@ -4,26 +4,20 @@
 docker_check_kernel: '3.10'
 docker_check_machine: 'x86_64'
 
-docker_package_dependencies: []
-docker_package_unwanted: []
-docker_package:
+# The docker package name
+docker_package: docker
+
+# A list of package to install/remove
+# docker_packages:
+#   - { "name": "docker", "state": "absent" }
+
+docker_init_config_directory: "/etc/sysconfig"
+docker_opts: "OPTIONS"
+
+docker_services:
   - docker
 
-docker_service_action: service
 docker_service_args:
     name: "{{item}}"
     state: started
     enabled: yes
-docker_service:
-  - docker
-
-docker_repository_action:
-  action: ''
-  pkg_key: ''
-  args: {}
-  repo_keys: []
-
-docker_repositoryinfo:
-  pkg_repo: ''
-  args: {}
-  repos: []

@@ -2,8 +2,7 @@
 # file: tasks/service.yml
 
 - name: service - start docker daemon
-  action: "{{docker_service_action}}"
+  with_items: "{{docker_services|default([])}}"
+  action: "service"
   args: "{{docker_service_args}}"
-  with_items: "{{docker_service}}"
-  when: "{{docker_service|length > 0}}"
   become: yes

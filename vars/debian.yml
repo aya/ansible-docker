@@ -4,7 +4,10 @@
 docker_check_kernel: '3.2'
 
 docker_package: docker-engine
-docker_package_dependencies:
-  - apt-transport-https
-  - curl
-  - software-properties-common
+docker_packages:
+  - { "name": "curl", "state": "present" }
+  - { "name": "apt-transport-https", "state": "present" }
+  - { "name": "software-properties-common", "state": "present" }
+
+docker_init_config_directory: "/etc/default"
+docker_opts: "DOCKER_OPTS"

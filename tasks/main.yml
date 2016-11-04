@@ -13,6 +13,10 @@
   tags:
     - package
 
+- include: config.yml
+  tags:
+    - config
+
 - include: service.yml
   tags:
     - service

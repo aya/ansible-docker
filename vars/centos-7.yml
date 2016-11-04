@@ -4,9 +4,9 @@
 docker_check_kernel: '3.10.0-327'
 
 docker_package: docker-latest
-docker_package_dependencies:
-  - curl
-  - device-mapper-libs
-docker_service:
+docker_packages:
+  - { "name": "curl", "state": "present" }
+  - { "name": "device-mapper-libs", "state": "present" }
+docker_services:
   - docker-latest-storage-setup
   - docker-latest
