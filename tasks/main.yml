@@ -9,6 +9,10 @@
   tags:
     - check
 
+- include: files.yml
+  tags:
+    - files
+
 - include: package.yml
   tags:
     - package

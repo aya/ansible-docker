@@ -1,0 +1,103 @@
+#!/bin/bash
+# Author : Yann Autissier <yann.autissier@gmail.com>
+
+DOCKER_IMAGE_REPOSITORY="centile"
+DOCKER_BUILD_DIRECTORY="/etc/docker"
+
+usage() {
+    echo Usage: $0 [-c cluster] image
+    echo -e "Build a docker image in the '${DOCKER_IMAGE_REPOSITORY}' repository."
+    echo 
+    echo -e "image\tis a directory with a Dockerfile, default in '${DOCKER_BUILD_DIRECTORY}/image'."
+    echo -e "\t'image' can contains a dash. The suffixed part after the dash is taken into account"
+    echo -e "\tin the image name but not in the name of the directory containing the Dockerfile."
+    echo -e "\tsuffix will be available in your Dockerfile in the DOCKER_BUILD_SUFFIX build-arg."
+    echo 
+    echo -e "Options:"
+    echo -e "\t-c 'cluster'\tAllow to override files in 'image' directory with existing files in"
+    echo -e "\t\t\tthe 'image/cluster' directory. 'cluster' will be available in your"
+    echo -e "\t\t\tDockerfile in the DOCKER_BUILD_PREFIX build-arg."
+    echo 
+    echo -e "EXAMPLES"
+    echo 
+    echo -e "$0 elk"
+    echo -e "Build a docker image named '${DOCKER_IMAGE_REPOSITORY}/elk' with Dockerfile ${DOCKER_BUILD_DIRECTORY}/elk/Dockerfile"
+    echo 
+    echo -e "$0 elk-es01"
+    echo -e "Build a docker image named '${DOCKER_IMAGE_REPOSITORY}/elk-es01' with Dockerfile ${DOCKER_BUILD_DIRECTORY}/elk/Dockerfile"
+    echo -e "and build-arg DOCKER_BUILD_SUFFIX=-es01"
+    echo 
+    echo -e "$0 -c elisa-sdc elk-es01"
+    echo -e "Build a docker image named '${DOCKER_IMAGE_REPOSITORY}/elk-es01' with Dockerfile ${DOCKER_BUILD_DIRECTORY}/elk/Dockerfile,"
+    echo -e "build-arg DOCKER_BUILD_PREFIX=elisa-sdc/ and build-arg DOCKER_BUILD_SUFFIX=-es01"
+    echo 
+    exit 1
+}
+
+while [ $# -gt 0 ]; do
+    case $1 in
+        -c|--cluster) shift && cluster="$1"
+        ;;
+        -h|--help) usage
+        ;;
+        *) args="${args:-} $1"
+    esac
+    shift
+    args="${args# }"
+done
+
+# extract docker image name
+image="$(basename ${args})"
+# keep part before the dash as the directory name
+dir="$(dirname ${args})/${image%%-*}"
+# keep part after the dash as an image suffix name
+suffix="${image#*-}"
+
+# default to ${DOCKER_BUILD_DIRECTORY}/${dir} if ${dir} does not exists
+[ ! -d "${dir}" ] && [ -d "${DOCKER_BUILD_DIRECTORY}/${dir}" ] && dir="${DOCKER_BUILD_DIRECTORY}/${dir#./}"
+
+# directory exists && contains a Dockerfile
+[ -d ${dir} ] && [ -f "${dir}/Dockerfile" ] || usage
+# cluster directory exists
+[ -n "${cluster}" ] && { [ -d ${dir}/${cluster} ] || usage; }
+
+# grsec/pax on alpine linux with docker < 1.12
+[ -f /etc/alpine-release ] && apk version IMAGE |awk -F '-' '/^IMAGE/ {print $2}' |sed 's/\./ /g' |while read major minor patch; do
+    if [ "${major}" -eq 1 ] && [ "${minor:-0}" -lt 12 ]; then
+        [ "$(sysctl -n kernel.grsecurity.chroot_deny_chmod 2>/dev/null)" = 1 ] && sysctl -w kernel.grsecurity.chroot_deny_chmod=0 2>/dev/null && grsec_disabled_chmod=1
+        [ "$(sysctl -n kernel.grsecurity.chroot_deny_mkmod 2>/dev/null)" = 1 ] && sysctl -w kernel.grsecurity.chroot_deny_mkmod=0 2>/dev/null && grsec_disabled_mknod=1
+        [ "$(sysctl -n kernel.pax.softmode 2>/dev/null)" = 0 ] && sysctl -w kernel.pax.softmode=1 2>/dev/null && pax_enabled_softmode=1
+    fi
+done
+
+# search for Dockeropts files
+files="${dir}/Dockeropts ${dir}/Dockeropts-${suffix}"
+[ -n "${cluster}" ] && files="${files} ${dir}/${cluster}/Dockeropts ${dir}/${cluster}/Dockeropts-${suffix}"
+
+# source the Dockeropts files
+for dockeropts in ${files}; do
+    [ -f "${dockeropts}" ] && . ${dockeropts}
+done
+
+# extract DOCKER_ARGS
+[ -n "${DOCKER_ARGS}" ] && for build_arg in ${DOCKER_ARGS}; do
+    DOCKER_BUILD_ARGS="${DOCKER_BUILD_ARGS} --build-arg ${build_arg}"
+done
+
+# add DOCKER_BUILD_PREFIX and DOCKER_BUILD_SUFFIX
+[ -n "${cluster}" ] && DOCKER_BUILD_ARGS="${DOCKER_BUILD_ARGS} --build-arg DOCKER_BUILD_PREFIX=${cluster}/"
+[ -n "${suffix}" ] && DOCKER_BUILD_ARGS="${DOCKER_BUILD_ARGS} --build-arg DOCKER_BUILD_SUFFIX=-${suffix}"
+
+# search for Dockerfile
+[ -n "${cluster}" ] && files="${dir}/${cluster}/Dockerfile-${suffix} ${dir}/${cluster}/Dockerfile" || files=""
+files="${files} ${dir}/Dockerfile-${suffix} ${dir}/Dockerfile"
+
+# build docker image with 1st found Dockerfile
+for dockerfile in ${files}; do
+    [ -f "${dockerfile}" ] && docker build ${DOCKER_BUILD_ARGS} -t ${DOCKER_IMAGE_REPOSITORY}/${image} -f ${dockerfile} ${dir} && break
+done
+
+# grsec/pax
+[ ${grsec_disabled_chmod} ] && sysctl -w kernel.grsecurity.chroot_deny_chmod=1 2>/dev/null
+[ ${grsec_disabled_chmod} ] && sysctl -w kernel.grsecurity.chroot_deny_chmod=1 2>/dev/null
+[ ${pax_enabled_softmode} ] && sysctl -w kernel.pax.softmode=0 2>/dev/null

@@ -1,0 +1,13 @@
+---
+# file: tasks/files.yml
+
+- name: docker - copy files
+  with_items:
+    - /usr/local/bin/docker-build
+    - /usr/local/bin/docker-cleanup
+    - /usr/local/bin/docker-log-cleanup
+    - /usr/local/bin/docker-log-truncate
+    - /usr/local/bin/docker-run
+  copy: src=../files/{{item}} dest={{item}} owner=root group=root mode=0755
+  become: yes
+
