@@ -1,0 +1,7 @@
+#!/bin/bash
+
+[ -n "$1" ] || exit
+
+for docker in $@; do
+    docker inspect "${docker}" 2>/dev/null |awk '$1 == "\"Status\":" {gsub(/(^\"|\",$)/, "", $2); print $2}'
+done

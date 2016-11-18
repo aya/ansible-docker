@@ -50,7 +50,7 @@ name="$(basename ${args})"
 # keep part before the dash as the directory name
 dir="$(dirname ${args})/${name%%-*}"
 # keep part after the dash as an image suffix name
-suffix="${name#*-}"
+[ "${image#*-}" != "${image}" ] && suffix="${name#*-}"
 # force image name
 [ -z "${image}" ] && image="${name}"
 

@@ -51,7 +51,7 @@ image="$(basename ${args})"
 # keep part before the dash as the directory name
 dir="$(dirname ${args})/${image%%-*}"
 # keep part after the dash as an image suffix name
-suffix="${image#*-}"
+[ "${image#*-}" != "${image}" ] && suffix="${image#*-}"
 
 # default to ${DOCKER_BUILD_DIRECTORY}/${dir} if ${dir} does not exists
 [ ! -d "${dir}" ] && [ -d "${DOCKER_BUILD_DIRECTORY}/${dir}" ] && dir="${DOCKER_BUILD_DIRECTORY}/${dir#./}"
@@ -94,10 +94,15 @@ files="${files} ${dir}/Dockerfile-${suffix} ${dir}/Dockerfile"
 
 # build docker image with 1st found Dockerfile
 for dockerfile in ${files}; do
-    [ -f "${dockerfile}" ] && docker build ${DOCKER_BUILD_ARGS} -t ${DOCKER_IMAGE_REPOSITORY}/${image} -f ${dockerfile} ${dir} && break
+    [ -f "${dockerfile}" ] || continue
+    docker build -q ${DOCKER_BUILD_ARGS} -t ${DOCKER_IMAGE_REPOSITORY}/${image} -f ${dockerfile} ${dir}
+    return=$?
+    break
 done
 
 # grsec/pax
 [ ${grsec_disabled_chmod} ] && sysctl -w kernel.grsecurity.chroot_deny_chmod=1 2>/dev/null
 [ ${grsec_disabled_chmod} ] && sysctl -w kernel.grsecurity.chroot_deny_chmod=1 2>/dev/null
 [ ${pax_enabled_softmode} ] && sysctl -w kernel.pax.softmode=0 2>/dev/null
+
+exit ${return:-1}
