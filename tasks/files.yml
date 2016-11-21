@@ -13,3 +13,10 @@
   copy: src=../files/{{item}} dest={{item}} owner=root group=root mode=0755
   become: yes
 
+- name: docker - copy files on Alpine Linux
+  with_items:
+    - /etc/local.d/docker.start
+  copy: src=../files/{{item}} dest={{item}} owner=root group=root mode=0755
+  become: yes
+  when: ansible_os_family|lower == "alpine"
+

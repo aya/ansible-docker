@@ -46,6 +46,15 @@ while [ $# -gt 0 ]; do
     args="${args# }"
 done
 
+# grsec/pax on alpine linux with docker < 1.12
+[ -f /etc/alpine-release ] && while read major minor patch; do
+    if [ "${major}" -eq 1 ] && [ "${minor:-0}" -lt 12 ]; then
+        [ "$(sysctl -n kernel.grsecurity.chroot_deny_chmod 2>/dev/null)" = 1 ] && sysctl -w kernel.grsecurity.chroot_deny_chmod=0 2>/dev/null && grsec_disabled_chmod=1
+        [ "$(sysctl -n kernel.grsecurity.chroot_deny_mknod 2>/dev/null)" = 1 ] && sysctl -w kernel.grsecurity.chroot_deny_mknod=0 2>/dev/null && grsec_disabled_mknod=1
+    fi
+    [ "$(sysctl -n kernel.pax.softmode 2>/dev/null)" = 0 ] && sysctl -w kernel.pax.softmode=1 2>/dev/null && pax_enabled_softmode=1
+done <<< $(apk version docker |awk -F '-' '/^docker/ {print $2}' |sed 's/\./ /g')
+
 for arg in $args; do
     # extract docker image name
     image="$(basename ${arg})"
@@ -61,15 +70,6 @@ for arg in $args; do
     [ -d ${dir} ] && [ -f "${dir}/Dockerfile" ] || usage
     # cluster directory exists
     [ -n "${CLUSTER}" ] && { [ -d ${dir}/${CLUSTER} ] || usage; }
-
-    # grsec/pax on alpine linux with docker < 1.12
-    [ -f /etc/alpine-release ] && apk version IMAGE |awk -F '-' '/^IMAGE/ {print $2}' |sed 's/\./ /g' |while read major minor patch; do
-        if [ "${major}" -eq 1 ] && [ "${minor:-0}" -lt 12 ]; then
-            [ "$(sysctl -n kernel.grsecurity.chroot_deny_chmod 2>/dev/null)" = 1 ] && sysctl -w kernel.grsecurity.chroot_deny_chmod=0 2>/dev/null && grsec_disabled_chmod=1
-            [ "$(sysctl -n kernel.grsecurity.chroot_deny_mkmod 2>/dev/null)" = 1 ] && sysctl -w kernel.grsecurity.chroot_deny_mkmod=0 2>/dev/null && grsec_disabled_mknod=1
-            [ "$(sysctl -n kernel.pax.softmode 2>/dev/null)" = 0 ] && sysctl -w kernel.pax.softmode=1 2>/dev/null && pax_enabled_softmode=1
-        fi
-    done
 
     # search for Dockeropts files
     files="${dir}/Dockeropts ${dir}/Dockeropts-${suffix}"
@@ -105,7 +105,7 @@ done
 
 # grsec/pax
 [ ${grsec_disabled_chmod} ] && sysctl -w kernel.grsecurity.chroot_deny_chmod=1 2>/dev/null
-[ ${grsec_disabled_chmod} ] && sysctl -w kernel.grsecurity.chroot_deny_chmod=1 2>/dev/null
+[ ${grsec_disabled_mknod} ] && sysctl -w kernel.grsecurity.chroot_deny_mknod=1 2>/dev/null
 [ ${pax_enabled_softmode} ] && sysctl -w kernel.pax.softmode=0 2>/dev/null
 
 exit ${return:-1}
