@@ -5,7 +5,7 @@ DOCKER_IMAGE_REPOSITORY="centile"
 DOCKER_BUILD_DIRECTORY="/etc/docker"
 
 usage() {
-    echo Usage: $0 [ -c cluster] [ -i image ] name
+    echo Usage: $0 [ -c cluster] [ -i image ] name [name [...]]
     echo -e "Run a docker from an image in the '${DOCKER_IMAGE_REPOSITORY}' repository."
     echo  
     echo -e "name\t is a directory with a Dockerfile, default in '${DOCKER_BUILD_DIRECTORY}/name'."
@@ -33,9 +33,9 @@ usage() {
 
 while [ $# -gt 0 ]; do
     case $1 in
-        -c|--cluster) shift && cluster="$1"
+        -c|--cluster) shift && CLUSTER="$1"
         ;;
-        -i|--image) shift && image="$1"
+        -i|--image) shift && IMAGE="$1"
         ;;
         -h|--help) usage
         ;;
@@ -45,60 +45,67 @@ while [ $# -gt 0 ]; do
     args="${args# }"
 done
 
-# extract docker name
-name="$(basename ${args})"
-# keep part before the dash as the directory name
-dir="$(dirname ${args})/${name%-*}"
-# keep part after the dash as an image suffix name
-[ "${name##*-}" != "${name}" ] && suffix="${name##*-}"
-# set docker name as image if not provided. if image does not exists, try without suffix
-[ -z "${image}" ] && image="${name}" && [ -z "$(docker images 2>/dev/null |awk '$1 == "'${DOCKER_IMAGE_REPOSITORY}/${image}'" {print $1}')" ] && image="${image%-*}"
+for arg in ${args}; do
+    # extract docker name
+    name="$(basename ${arg})"
+    # keep part before the dash as the directory name
+    dir="$(dirname ${arg})/${name%-*}"
+    # keep part after the dash as an image suffix name
+    [ "${name##*-}" != "${name}" ] && suffix="${name##*-}"
+    # set docker image
+    [ -n "${IMAGE}" ] && image="${IMAGE}"
+    # if image is not provided, set docker name as image and if image does not exists, try without suffix
+    [ -z "${IMAGE}" ] && image="${name}" && [ -z "$(docker images 2>/dev/null |awk '$1 == "'${DOCKER_IMAGE_REPOSITORY}/${image}'" {print $1}')" ] && image="${image%-*}"
 
-# default to ${DOCKER_BUILD_DIRECTORY}/${dir} if ${dir} does not exists
-[ ! -d "${dir}" ] && [ -d "${DOCKER_BUILD_DIRECTORY}/${dir}" ] && dir="${DOCKER_BUILD_DIRECTORY}/${dir#./}"
+    # default to ${DOCKER_BUILD_DIRECTORY}/${dir} if ${dir} does not exists
+    [ ! -d "${dir}" ] && [ -d "${DOCKER_BUILD_DIRECTORY}/${dir}" ] && dir="${DOCKER_BUILD_DIRECTORY}/${dir#./}"
 
-# directory exists && contains a Dockerfile
-[ -d ${dir} ] && [ -f "${dir}/Dockerfile" ] || usage
-# cluster directory exists
-[ -n "${cluster}" ] && { [ -d ${dir}/${cluster} ] || usage; }
+    # directory exists && contains a Dockerfile
+    [ -d ${dir} ] && [ -f "${dir}/Dockerfile" ] || usage
+    # cluster directory exists
+    [ -n "${CLUSTER}" ] && { [ -d ${dir}/${CLUSTER} ] || usage; }
 
-tag="$(docker images |awk '$1 == "'${DOCKER_IMAGE_REPOSITORY}/${image}'" {print $2}')"
-[ -z "${tag}" ] && echo "ERROR: Cannot find image '${DOCKER_IMAGE_REPOSITORY}/${image}'" && exit 2
+    tag="$(docker images |awk '$1 == "'${DOCKER_IMAGE_REPOSITORY}/${image}'" {print $2}')"
+    [ -z "${tag}" ] && echo "ERROR: Cannot find image '${DOCKER_IMAGE_REPOSITORY}/${image}'" && exit 2
 
-# search for Dockeropts files
-files="${dir}/Dockeropts ${dir}/Dockeropts-${suffix}"
-[ -n "${cluster}" ] && files="${files} ${dir}/${cluster}/Dockeropts ${dir}/${cluster}/Dockeropts-${suffix}"
+    # search for Dockeropts files
+    files="${dir}/Dockeropts ${dir}/Dockeropts-${suffix}"
+    [ -n "${CLUSTER}" ] && files="${files} ${dir}/${CLUSTER}/Dockeropts ${dir}/${CLUSTER}/Dockeropts-${suffix}"
 
-# source the Dockeropts files
-for dockeropts in ${files}; do
-    [ -f "${dockeropts}" ] && . ${dockeropts}
+    # source the Dockeropts files
+    for dockeropts in ${files}; do
+        [ -f "${dockeropts}" ] && . ${dockeropts}
+    done
+
+    # extract SYSCTL
+    [ -n "${SYSCTL}" ] && for sysctl in ${SYSCTL}; do
+        sysctl -w ${sysctl} 2>/dev/null
+    done
+
+    # extract DOCKER_OPT
+    [ -n "${DOCKER_OPT}" ] && DOCKER_OPTS="${DOCKER_OPTS} --${DOCKER_OPT/ / --}"
+
+    # extract DOCKER_ENV
+    [ -n "${DOCKER_ENV}" ] && DOCKER_OPTS="${DOCKER_OPTS} -e ${DOCKER_ENV//\" /\" -e }"
+
+    # extract DOCKER_PORT
+    [ -n "${DOCKER_PORT}" ] && DOCKER_OPTS="${DOCKER_OPTS} -p ${DOCKER_PORT// / -p }"
+
+    # extract DOCKER_ULIMIT
+    [ -n "${DOCKER_ULIMIT}" ] && DOCKER_OPTS="${DOCKER_OPTS} --ulimit ${DOCKER_ULIMIT// / --ulimit }"
+
+    # extract DOCKER_VOLUME
+    [ -n "${DOCKER_VOLUME}" ] && DOCKER_OPTS="${DOCKER_OPTS} -v ${DOCKER_VOLUME// / -v }"
+
+    # enable access to host volumes on selinux
+    for volume in ${HOST_VOLUME}; do
+        chcon -Rt svirt_sandbox_file_t ${volume} 2>/dev/null
+    done
+
+    # launch docker
+    eval docker run --restart=always ${DOCKER_OPTS} -d --name ${name} ${DOCKER_IMAGE_REPOSITORY}/${image}
+    result=$?
+    [ ${result:-0} -ge ${return:-0} ] && return=${result}
 done
 
-# extract SYSCTL
-[ -n "${SYSCTL}" ] && for sysctl in ${SYSCTL}; do
-    sysctl -w ${sysctl} 2>/dev/null
-done
-
-# extract DOCKER_OPT
-[ -n "${DOCKER_OPT}" ] && DOCKER_OPTS="${DOCKER_OPTS} --${DOCKER_OPT/ / --}"
-
-# extract DOCKER_ENV
-[ -n "${DOCKER_ENV}" ] && DOCKER_OPTS="${DOCKER_OPTS} -e ${DOCKER_ENV//\" /\" -e }"
-
-# extract DOCKER_PORT
-[ -n "${DOCKER_PORT}" ] && DOCKER_OPTS="${DOCKER_OPTS} -p ${DOCKER_PORT// / -p }"
-
-# extract DOCKER_ULIMIT
-[ -n "${DOCKER_ULIMIT}" ] && DOCKER_OPTS="${DOCKER_OPTS} --ulimit ${DOCKER_ULIMIT// / --ulimit }"
-
-# extract DOCKER_VOLUME
-[ -n "${DOCKER_VOLUME}" ] && DOCKER_OPTS="${DOCKER_OPTS} -v ${DOCKER_VOLUME// / -v }"
-
-# enable access to host volumes on selinux
-for volume in ${HOST_VOLUME}; do
-    chcon -Rt svirt_sandbox_file_t ${volume} 2>/dev/null
-done
-
-# launch docker
-eval docker run --restart=always ${DOCKER_OPTS} -d --name ${name} ${DOCKER_IMAGE_REPOSITORY}/${image}
-
+exit ${return:-1}
