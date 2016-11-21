@@ -48,11 +48,11 @@ done
 # extract docker name
 name="$(basename ${args})"
 # keep part before the dash as the directory name
-dir="$(dirname ${args})/${name%%-*}"
+dir="$(dirname ${args})/${name%-*}"
 # keep part after the dash as an image suffix name
-[ "${image#*-}" != "${image}" ] && suffix="${name#*-}"
-# force image name
-[ -z "${image}" ] && image="${name}"
+[ "${name##*-}" != "${name}" ] && suffix="${name##*-}"
+# set docker name as image if not provided. if image does not exists, try without suffix
+[ -z "${image}" ] && image="${name}" && [ -z "$(docker images 2>/dev/null |awk '$1 == "'${DOCKER_IMAGE_REPOSITORY}/${image}'" {print $1}')" ] && image="${image%-*}"
 
 # default to ${DOCKER_BUILD_DIRECTORY}/${dir} if ${dir} does not exists
 [ ! -d "${dir}" ] && [ -d "${DOCKER_BUILD_DIRECTORY}/${dir}" ] && dir="${DOCKER_BUILD_DIRECTORY}/${dir#./}"
@@ -64,10 +64,6 @@ dir="$(dirname ${args})/${name%%-*}"
 
 tag="$(docker images |awk '$1 == "'${DOCKER_IMAGE_REPOSITORY}/${image}'" {print $2}')"
 [ -z "${tag}" ] && echo "ERROR: Cannot find image '${DOCKER_IMAGE_REPOSITORY}/${image}'" && exit 2
-
-DOCKER_NAME=${1##*/}
-[ -n "$2" ] && DOCKER_IMAGE="$2" || DOCKER_IMAGE="${DOCKER_NAME}"
-[ -d ${1%%-*}/${3} ] && CLUSTER="${3}/" || CLUSTER=""
 
 # search for Dockeropts files
 files="${dir}/Dockeropts ${dir}/Dockeropts-${suffix}"

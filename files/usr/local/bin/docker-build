@@ -49,9 +49,9 @@ done
 # extract docker image name
 image="$(basename ${args})"
 # keep part before the dash as the directory name
-dir="$(dirname ${args})/${image%%-*}"
+dir="$(dirname ${args})/${image%-*}"
 # keep part after the dash as an image suffix name
-[ "${image#*-}" != "${image}" ] && suffix="${image#*-}"
+[ "${image##*-}" != "${image}" ] && suffix="${image##*-}"
 
 # default to ${DOCKER_BUILD_DIRECTORY}/${dir} if ${dir} does not exists
 [ ! -d "${dir}" ] && [ -d "${DOCKER_BUILD_DIRECTORY}/${dir}" ] && dir="${DOCKER_BUILD_DIRECTORY}/${dir#./}"
