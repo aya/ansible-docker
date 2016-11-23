@@ -1,6 +1,0 @@
-#!/bin/sh
-echo 0 >/proc/sys/kernel/grsecurity/chroot_deny_chmod 2>/dev/null
-echo 0 >/proc/sys/kernel/grsecurity/chroot_deny_mknod 2>/dev/null
-sysctl -w kernel.pax.softmode=1 2>/dev/null
-sysctl -w vm.swappiness=1
-

@@ -13,10 +13,9 @@
   copy: src=../files/{{item}} dest={{item}} owner=root group=root mode=0755
   become: yes
 
-- name: docker - copy files on Alpine Linux
+- name: docker - copy sysctl configuration files
   with_items:
-    - /etc/local.d/docker.start
-  copy: src=../files/{{item}} dest={{item}} owner=root group=root mode=0755
+    - /etc/sysctl.d/docker.conf
+  copy: src=../files/{{item}} dest={{item}} owner=root group=root mode=0644
   become: yes
-  when: ansible_os_family|lower == "alpine"
 
