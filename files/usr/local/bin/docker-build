@@ -5,7 +5,7 @@ DOCKER_IMAGE_REPOSITORY="centile"
 DOCKER_BUILD_DIRECTORY="/etc/docker"
 
 usage() {
-    echo Usage: $0 [-c cluster] image [image [...]]
+    echo Usage: $0 [-c cluster] [-t] [-v] image [image [...]]
     echo -e "Build a docker image in the '${DOCKER_IMAGE_REPOSITORY}' repository."
     echo 
     echo -e "image\tis a directory with a Dockerfile, default in '${DOCKER_BUILD_DIRECTORY}/image'."
@@ -17,6 +17,8 @@ usage() {
     echo -e "\t-c 'cluster'\tAllow to override files in 'image' directory with existing files in"
     echo -e "\t\t\tthe 'image/cluster' directory. 'cluster' will be available in your"
     echo -e "\t\t\tDockerfile in the DOCKER_BUILD_PREFIX build-arg."
+    echo -e "\t-t\t\ttest mode, output the command that would be launched."
+    echo -e "\t-v\t\tverbose mode, launch the docker build command without quiet mode."
     echo 
     echo -e "EXAMPLES"
     echo 
@@ -38,6 +40,10 @@ while [ $# -gt 0 ]; do
     case $1 in
         -c|--cluster) shift && CLUSTER="$1"
         ;;
+        -t|--test) TEST=1
+        ;;
+        -v|--verbose) VERBOSE=1
+        ;;
         -h|--help) usage
         ;;
         *) args="${args:-} $1"
@@ -53,6 +59,8 @@ done
         [ "$(sysctl -n kernel.grsecurity.chroot_deny_mknod 2>/dev/null)" = 1 ] && sysctl -w kernel.grsecurity.chroot_deny_mknod=0 2>/dev/null && grsec_disabled_mknod=1
     fi
 done <<< $(apk version docker |awk -F '-' '/^docker/ {print $2}' |sed 's/\./ /g')
+
+[ ${VERBOSE} ] && QUIET="" || QUIET="-q "
 
 for arg in $args; do
     # extract docker image name
@@ -95,8 +103,12 @@ for arg in $args; do
     # build docker image with 1st found Dockerfile
     for dockerfile in ${files}; do
         [ -f "${dockerfile}" ] || continue
-        docker build -q ${DOCKER_BUILD_ARGS} -t ${DOCKER_IMAGE_REPOSITORY}/${image} -f ${dockerfile} ${dir}
-        result=$?
+        if [ ${TEST} ]; then
+            echo docker build ${QUIET} ${DOCKER_BUILD_ARGS} -t ${DOCKER_IMAGE_REPOSITORY}/${image} -f ${dockerfile} ${dir}
+        else
+            docker build ${QUIET} ${DOCKER_BUILD_ARGS} -t ${DOCKER_IMAGE_REPOSITORY}/${image} -f ${dockerfile} ${dir}
+            result=$?
+        fi
         [ ${result:-0} -ge ${return:-0} ] && return=${result}
         break
     done
