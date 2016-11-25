@@ -1,5 +1,5 @@
 #!/bin/bash
-# Author : Yann Autissier <yann.autissier@gmail.com>
+# Author: Yann Autissier <yann.autissier@gmail.com>
 
 DOCKER_IMAGE_REPOSITORY="centile"
 DOCKER_BUILD_DIRECTORY="/etc/docker"
@@ -103,6 +103,7 @@ for arg in $args; do
     # build docker image with 1st found Dockerfile
     for dockerfile in ${files}; do
         [ -f "${dockerfile}" ] || continue
+        [ ! ${VERBOSE} ] && echo -n "${image} " || echo "Building image ${image}"
         if [ ${TEST} ]; then
             echo docker build ${QUIET} ${DOCKER_BUILD_ARGS} -t ${DOCKER_IMAGE_REPOSITORY}/${image} -f ${dockerfile} ${dir}
         else

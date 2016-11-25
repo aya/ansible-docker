@@ -1,5 +1,5 @@
 #!/bin/bash
-# Author : Yann Autissier <yann.autissier@gmail.com>
+# Author: Yann Autissier <yann.autissier@gmail.com>
 
 DOCKER_IMAGE_REPOSITORY="centile"
 DOCKER_BUILD_DIRECTORY="/etc/docker"

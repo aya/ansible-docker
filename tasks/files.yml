@@ -5,6 +5,8 @@
   with_items:
     - /usr/local/bin/docker-build
     - /usr/local/bin/docker-cleanup
+    - /usr/local/bin/docker-cleanup-images
+    - /usr/local/bin/docker-cleanup-volumes
     - /usr/local/bin/docker-log-cleanup
     - /usr/local/bin/docker-log-truncate
     - /usr/local/bin/docker-run
