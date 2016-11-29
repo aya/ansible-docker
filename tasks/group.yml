@@ -5,3 +5,8 @@
   group: name="docker" state="present" system="yes"
   become: yes
   when: ansible_os_family|lower != "alpine"
+
+- name: group - add me to the docker group
+  user: name="{{ansible_user_id}}" groups=docker append=yes
+  become: yes
+  when: ansible_os_family|lower != "alpine" and ansible_user_id != "root"
