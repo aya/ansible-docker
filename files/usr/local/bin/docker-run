@@ -5,7 +5,7 @@ DOCKER_IMAGE_REPOSITORY="centile"
 DOCKER_BUILD_DIRECTORY="/etc/docker"
 
 usage() {
-    echo Usage: $0 [ -c cluster] [ -i image ] [-t] name [name [...]]
+    echo Usage: $0 [ -c cluster] [ -i image ] [-f] [-q] [-t] name [name [...]]
     echo -e "Run a docker from an image in the '${DOCKER_IMAGE_REPOSITORY}' repository."
     echo  
     echo -e "name\t is a directory with a Dockerfile, default in '${DOCKER_BUILD_DIRECTORY}/name'."
@@ -16,7 +16,9 @@ usage() {
     echo -e "\t-c 'cluster'\tAllow to override files in 'image' directory with existing files in"
     echo -e "\t\t\tthe 'image/cluster' directory."
     echo -e "\t -i 'image'\tthe docker image to run, default in '${DOCKER_IMAGE_REPOSITORY}' repository."
-    echo -e "\t -t\t\ttest mode, output the command that would be launched."
+    echo -e "\t -f\t\tforce run, stop and remove existing docker before running a new one."
+    echo -e "\t -q\t\tquiet mode, minimal output."
+    echo -e "\t -t\t\ttest mode, do nothing but output the command that would have been launched."
     echo
     echo -e "EXAMPLES"
     echo 
@@ -40,6 +42,10 @@ while [ $# -gt 0 ]; do
         ;;
         -h|--help) usage
         ;;
+        -f|--force) FORCE=1
+        ;;
+        -q|--quiet) QUIET=1
+        ;;
         -t|--test) TEST=1
         ;;
         *) args="${args:-} $1"
@@ -48,9 +54,12 @@ while [ $# -gt 0 ]; do
     args="${args# }"
 done
 
+# check args
+[ "${args:0:1}" = "-" ] && usage
+
 for arg in ${args}; do
-    # reset args
-    image=""
+    # reset vars
+    image=""; DOCKER_OPT=""
     # extract docker name
     name="$(basename ${arg})"
     # keep part before the dash as the directory name
@@ -72,7 +81,7 @@ for arg in ${args}; do
     fi
 
     tag="$(docker images |awk '$1 == "'${image}'" {print $2}')"
-    [ -z "${tag}" ] && echo "ERROR: Cannot find image '${image}'" && exit 2
+    [ -z "${tag}" ] && echo "ERROR: Cannot find image '${image}'" >2 && exit 2
 
     # default to ${DOCKER_BUILD_DIRECTORY}/${dir} if ${dir} does not exists
     [ ! -d "${dir}" ] && [ -d "${DOCKER_BUILD_DIRECTORY}/${dir}" ] && dir="${DOCKER_BUILD_DIRECTORY}/${dir#./}"
@@ -97,7 +106,7 @@ for arg in ${args}; do
     done
 
     # extract DOCKER_OPT
-    [ -n "${DOCKER_OPT}" ] && DOCKER_OPTS="--${DOCKER_OPT/ / --}"
+    [ -n "${DOCKER_OPT}" ] && DOCKER_OPTS="--${DOCKER_OPT/ / --}" || DOCKER_OPTS=""
 
     # extract DOCKER_ENV
     [ -n "${DOCKER_ENV}" ] && DOCKER_OPTS="${DOCKER_OPTS} -e ${DOCKER_ENV//\" /\" -e }"
@@ -119,12 +128,28 @@ for arg in ${args}; do
         chcon -Rt svirt_sandbox_file_t ${volume} 2>/dev/null
     done
 
+    # remove current docker
+    if [ ${FORCE} ]; then
+	if [ -n "$(docker ps -q --filter status=created,status=restarting,status=running,status=paused,status=exited,status=dead,name=${name})" ]; then
+            [ ! ${QUIET} ] && echo -n "Removing docker ${name}... "
+            if [ ${TEST} ]; then
+                echo docker rm -f ${name}
+            else
+                eval docker rm -f ${name} >/dev/null 2>&1
+                result=$? && [ ${result} -ne 0 ] && echo "ERROR" && { [ ${result:-0} -ge ${return:-0} ] && return=${result}; } && break
+		[ ! ${QUIET} ] && echo "OK"
+            fi
+        fi
+    fi
+
     # launch docker
+    [ ${QUIET} ] && [ ! ${TEST} ] && echo -n "${name} "
+    [ ! ${QUIET} ] && echo -n "Running docker ${name}... "
     if [ ${TEST} ]; then
         echo docker run --restart=always ${DOCKER_OPTS} -d --name ${name} ${image} ${DOCKER_RUN:-}
     else
-        eval docker run --restart=always ${DOCKER_OPTS} -d --name ${name} ${image} ${DOCKER_RUN:-}
-        result=$?
+        eval docker run --restart=always ${DOCKER_OPTS} -d --name ${name} ${image} ${DOCKER_RUN:-} 2>/dev/null
+        result=$? && [ ${result} -ne 0 ] && echo "ERROR"
     fi
     [ ${result:-0} -ge ${return:-0} ] && return=${result}
 done

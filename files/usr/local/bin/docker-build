@@ -5,7 +5,7 @@ DOCKER_IMAGE_REPOSITORY="centile"
 DOCKER_BUILD_DIRECTORY="/etc/docker"
 
 usage() {
-    echo Usage: $0 [-c cluster] [-t] [-v] image [image [...]]
+    echo Usage: $0 [-c cluster] [-f] [-q] [-t] image [image [...]]
     echo -e "Build a docker image in the '${DOCKER_IMAGE_REPOSITORY}' repository."
     echo 
     echo -e "image\tis a directory with a Dockerfile, default in '${DOCKER_BUILD_DIRECTORY}/image'."
@@ -17,8 +17,9 @@ usage() {
     echo -e "\t-c 'cluster'\tAllow to override files in 'image' directory with existing files in"
     echo -e "\t\t\tthe 'image/cluster' directory. 'cluster' will be available in your"
     echo -e "\t\t\tDockerfile in the DOCKER_BUILD_PREFIX build-arg."
-    echo -e "\t-t\t\ttest mode, output the command that would be launched."
-    echo -e "\t-v\t\tverbose mode, launch the docker build command without quiet mode."
+    echo -e "\t-f\t\tforce build, do not use cache when building image."
+    echo -e "\t-q\t\tquiet mode, minimal output."
+    echo -e "\t-t\t\ttest mode, do nothing but output the command that would haev been launched."
     echo 
     echo -e "EXAMPLES"
     echo 
@@ -40,9 +41,11 @@ while [ $# -gt 0 ]; do
     case $1 in
         -c|--cluster) shift && CLUSTER="$1"
         ;;
+        -f|--force) FORCE=1
+        ;;
         -t|--test) TEST=1
         ;;
-        -v|--verbose) VERBOSE=1
+        -q|--quiet) QUIET=1
         ;;
         -h|--help) usage
         ;;
@@ -52,6 +55,9 @@ while [ $# -gt 0 ]; do
     args="${args# }"
 done
 
+# check args
+[ "${args:0:1}" = "-" ] && usage
+
 # grsec/pax on alpine linux with docker < 1.12
 [ -f /etc/alpine-release ] && while read major minor patch; do
     if [ "${major}" -eq 1 ] && [ "${minor:-0}" -lt 12 ]; then
@@ -59,8 +65,6 @@ done
         [ "$(sysctl -n kernel.grsecurity.chroot_deny_mknod 2>/dev/null)" = 1 ] && sysctl -w kernel.grsecurity.chroot_deny_mknod=0 2>/dev/null && grsec_disabled_mknod=1
     fi
 done <<< $(apk version docker |awk -F '-' '/^docker/ {print $2}' |sed 's/\./ /g')
-
-[ ${VERBOSE} ] && QUIET="" || QUIET="-q "
 
 for arg in $args; do
     # extract docker image name
@@ -87,6 +91,12 @@ for arg in $args; do
         [ -f "${dockeropts}" ] && . ${dockeropts}
     done
 
+    # quiet build
+    [ ${QUIET} ] && DOCKER_BUILD_ARGS="--quiet" || DOCKER_BUILD_ARGS=""
+
+    # do not use cache
+    [ ${FORCE} ] && DOCKER_BUILD_ARGS="${DOCKER_BUILD_ARGS} --no-cache"
+
     # extract DOCKER_ARGS
     [ -n "${DOCKER_ARGS}" ] && for build_arg in ${DOCKER_ARGS}; do
         DOCKER_BUILD_ARGS="${DOCKER_BUILD_ARGS} --build-arg ${build_arg}"
@@ -103,11 +113,12 @@ for arg in $args; do
     # build docker image with 1st found Dockerfile
     for dockerfile in ${files}; do
         [ -f "${dockerfile}" ] || continue
-        [ ! ${VERBOSE} ] && echo -n "${image} " || echo "Building image ${image}"
+        [ ${QUIET} ] && [ ! ${TEST} ] && echo -n "${image} "
+        [ ! ${QUIET} ] && echo "Building image ${image}"
         if [ ${TEST} ]; then
-            echo docker build ${QUIET} ${DOCKER_BUILD_ARGS} -t ${DOCKER_IMAGE_REPOSITORY}/${image} -f ${dockerfile} ${dir}
+            echo docker build ${DOCKER_BUILD_ARGS} -t ${DOCKER_IMAGE_REPOSITORY}/${image} -f ${dockerfile} ${dir}
         else
-            docker build ${QUIET} ${DOCKER_BUILD_ARGS} -t ${DOCKER_IMAGE_REPOSITORY}/${image} -f ${dockerfile} ${dir}
+            docker build ${DOCKER_BUILD_ARGS} -t ${DOCKER_IMAGE_REPOSITORY}/${image} -f ${dockerfile} ${dir}
             result=$?
         fi
         [ ${result:-0} -ge ${return:-0} ] && return=${result}
