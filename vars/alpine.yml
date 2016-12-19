@@ -1,9 +1,0 @@
----
-# file: vars/alpine.yml
-
-docker_service_args:
-    name: "{{item}}"
-    state: started
-    enabled: yes
-    runlevel: boot
-
