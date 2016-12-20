@@ -29,3 +29,11 @@
   tags:
     - group
 
+- include: build.yml
+  tags:
+    - build
+
+- include: run.yml
+  tags:
+    - run
+

@@ -8,7 +8,7 @@
     state: started
     enabled: yes
   become: yes
-  when: ansible_service_mgr|lower != "openrc" && ansible_os_family|lower != "alpine"
+  when: ansible_service_mgr|lower != "openrc" and ansible_os_family|lower != "alpine"
 
 - name: service - start docker daemon
   with_items: "{{docker_services|default([])}}"
@@ -18,4 +18,4 @@
     enabled: yes
     runlevel: boot
   become: yes
-  when: ansible_service_mgr|lower == "openrc" || ansible_os_family|lower == "alpine"
+  when: ansible_service_mgr|lower == "openrc" or ansible_os_family|lower == "alpine"

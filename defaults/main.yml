@@ -24,3 +24,18 @@ docker_opts: "OPTIONS"
 docker_services:
   - docker
 
+# dockers
+# dockers:
+#   - nginx
+
+# docker cluster
+# docker_cluster: ""
+
+# Start docker
+docker_start: true
+
+# Stop and remove running docker to start a new one when image has been updated
+docker_restart: true
+
+# Stop and remove running docker to start a new one even if image has not been updated
+docker_force_restart: false

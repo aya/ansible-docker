@@ -1,9 +1,10 @@
-# Ansible role to install docker
+# Ansible role to run dockers
 
-An ansible role to install the [docker](https://www.docker.com/) daemon.
+An ansible role to install the [docker](https://www.docker.com/) daemon and build and run dockers.
 
 It installs the docker daemon and ensure it is up and running.
 It sets the STORAGE_DRIVER if the docker host uses systemd and it configures the MTU to 1450 if it is a VM running on OpenStack.
+It builds and runs docker images on the docker host.
 
 ## Requirements
 
@@ -54,12 +55,48 @@ docker_init_config_directory: "/etc/sysconfig"
 docker_opts: "OPTIONS"
 ```
 
-* `docker_services` - A list of services to start
+* `docker_services` - A list of system services to start
 
 ``` yaml
 # services
 docker_services:
   - docker
+```
+
+* `dockers` - A list of docker images to build and run on the docker host with the docker-build and docker-run commands
+
+``` yaml
+# dockers
+# dockers:
+#   - nginx
+```
+
+* `docker_cluster` - An optional cluster name to pass to the docker-build and docker-run commands
+
+``` yaml
+# docker cluster
+# docker_cluster: ""
+```
+
+* `docker_cluster` - Starts the dockers if set to true.
+
+``` yaml
+# Start docker
+docker_start: true
+```
+
+* `docker_restart` - Restarts dockers when their image has been updated. It removes current running dockers and start new ones.
+
+``` yaml
+# Stop and remove running docker to start a new one when image has been updated
+docker_restart: true
+```
+
+* `docker_force_restart` - Restart dockers, even if image has not been updated. It removes current running dockers and start new ones.
+
+``` yaml
+# Stop and remove running docker to start a new one even if image has not been updated
+docker_force_restart: false
 ```
 
 ## Helper scripts
@@ -149,11 +186,10 @@ The DOCKER_BUILD_PREFIX variable is populated with 'custom/' to force the Docker
 * Whith an image name suffixed with a dash, the docker-build command will search for a suffixed file as well.
 
 ``` bash
-# docker-build nginx-develop && docker-run nginx-develop
+# docker-build -c custom nginx-develop && docker-run -c custom nginx-develop
 ```
 
-The DOCKER_BUILD_SUFFIX variable is populated with '-develop' to force the Dockerfile to search for a `./nginx.conf-develop` file, ie /etc/docker/nginx/nginx.conf-develop file.
-The docker-run
+The DOCKER_BUILD_PREFIX variable is populated with 'custom/' and the DOCKER_BUILD_SUFFIX variable is populated with '-develop' to force the Dockerfile to search for a `./custom/nginx.conf-develop` file, ie /etc/docker/nginx/custom/nginx.conf-develop file.
 
 ### Override your options
 
@@ -175,6 +211,17 @@ Overriding options is done several times, reading options from the more specific
 /etc/docker/nginx/custom/Dockeropts-develop
 /etc/docker/nginx/custom/Dockeropts
 /etc/docker/nginx/Dockeropts
+
+## Common configuration
+
+Following configuration builds and runs the docker image 'nginx-develop' for the 'custom' cluster described in our example.
+The Dockerfile and Dockeropts files needed in the /etc/docker/nginx directory should be present on the docker host, likely synchronised by an other ansible role.
+
+``` yaml
+docker_cluster: "custom"
+docker:
+  - nginx-develop
+```
 
 ## Tests
 
