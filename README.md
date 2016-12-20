@@ -235,11 +235,3 @@ $ ansible-playbook tests/playbook.yml
 
 This role is known to work on Ubuntu, Debian, CentOS and Alpine Linux.
 
-## Authors
-
-* **Yann Autissier** - *Initial work* - [aya](https://github.com/aya)
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
-
