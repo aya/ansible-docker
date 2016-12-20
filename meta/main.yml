@@ -35,9 +35,8 @@ galaxy_info:
   - name: Debian
     versions:
     - jessie
-  - name: CentOS
+  - name: EL
     versions:
-    - 7.0
-    - 6.5
+    - all
 
 dependencies: []
