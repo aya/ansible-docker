@@ -1,7 +1,7 @@
 ---
 # file: tasks/files.yml
 
-- name: docker - copy files
+- name: files - copy files
   with_items:
     - /usr/local/bin/docker-build
     - /usr/local/bin/docker-cleanup
@@ -15,7 +15,7 @@
   copy: src=../files/{{item}} dest={{item}} owner=root group=root mode=0755
   become: yes
 
-- name: docker - copy sysctl configuration files
+- name: files - copy sysctl configuration files
   with_items:
     - /etc/sysctl.d/docker.conf
   copy: src=../files/{{item}} dest={{item}} owner=root group=root mode=0644
